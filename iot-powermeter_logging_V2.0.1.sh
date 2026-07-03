@@ -9,21 +9,81 @@ flows=$user/.node-red/flows.json
 sudo apt update && sudo apt -y upgrade
 echo "[Device] npm install better-sqlite3..."
 npm install better-sqlite3 --prefix  ~/.node-red/
-echo "[Device] npm install sqlalchemy..."
+echo "[Device] npm install python library..."
 sudo pip3 install sqlalchemy
+sudo pip3 install requests
 
 if [ ! -d "$sqldir" ]; then
   mkdir -p $sqldir
   echo "Create Sqlite Directory..."
   if [ ! -f "$db" ]; then
     sqlite3 "$db" "
-    CREATE TABLE telemetry_energy_local (
+      CREATE TABLE telemetry_energy_logging(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      create_at DATETIME DEFAULT (datetime('now', '+7 hours')),
+      create_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       sent INTEGER DEFAULT 0,
       ts INTEGER NOT NULL,
       date_data TEXT,
-      time_data TEXT,
+      date_time TEXT,
+      voltA REAL,
+      voltB REAL,
+      voltC REAL,
+      currentA REAL,
+      currentB REAL, 
+      currentC REAL,
+      powerA REAL,
+      powerB REAL,
+      powerC REAL,
+      powerfA REAL, 
+      powerfB REAL, 
+      powerfC REAL,
+      powerpA REAL, 
+      powerpB REAL, 
+      powerpC REAL,
+      currentpA REAL,
+      currentpB REAL,
+      currentpC REAL,
+      total_e REAL,
+      energy_A REAL,
+      energy_B REAL
+      );"
+
+  sqlite3 "$db" "
+      CREATE TABLE telemeter_energy(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      create_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      e0 REAL, 
+      e1 REAL, 
+      e2 REAL, 
+      e3 REAL, 
+      e4 REAL, 
+      e5 REAL, 
+      e6 REAL,
+      e7 REAL, 
+      e8 REAL, 
+      e9 REAL, 
+      e10 REAL, 
+      e11 REAL, 
+      e12 REAL, 
+      e13 REAL, 
+      e14 REAL, 
+      e15 REAL, 
+      e16 REAL, 
+      e17 REAL, 
+      e18 REAL, 
+      e19 REAL, 
+      e20 REAL, 
+      e21 REAL, 
+      e22 REAL, 
+      e23 REAL
+      );"
+
+  sqlite3 "$db" "
+      CREATE TABLE telemetry_energy_cloud(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      create_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      sent INTEGER DEFAULT 0,
+      ts INTEGER NOT NULL,
       voltA REAL,
       voltB REAL,
       voltC REAL,
@@ -36,79 +96,14 @@ if [ ! -d "$sqldir" ]; then
       powerfA REAL,
       powerfB REAL,
       powerfC REAL,
-      powerpA REAL,
-      powerpB REAL,
-      powerpC REAL,
-      currentpA REAL,
-      currentpB REAL,
-      currentpC REAL,
       energy REAL,
+      energy_nim REAL,
       energy_A REAL,
       energy_B REAL,
       total_energy REAL,
       co2 REAL
       );"
-
-  sqlite3 "$db" "
-  CREATE TABLE telemetry_energy_hour (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    create_at DATETIME DEFAULT (datetime('now', '+7 hours')),
-    e0 REAL,
-    e1 REAL,
-    e2 REAL,
-    e3 REAL,
-    e4 REAL,
-    e5 REAL,
-    e6 REAL,
-    e7 REAL,
-    e8 REAL,
-    e9 REAL,
-    e10 REAL,
-    111 REAL,
-    e12 REAL,
-    e13 REAL,
-    e14 REAL,
-    e15 REAL,
-    e16 REAL,
-    e17 REAL,
-    e18 REAL,
-    e19 REAL,
-    e20 REAL,
-    e21 REAL,
-    e22 REAL,
-    e23 REAL
-  );"
-
-  sqlite3 "$db" "
-  CREATE TABLE telemetry_energy_cloud (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    create_at DATETIME DEFAULT (datetime('now', '+7 hours')),
-    sent INTEGER DEFAULT 0,
-    ts INTEGER NOT NULL,
-    voltA REAL,
-    voltB REAL,
-    voltC REAL,
-    currentA REAL,
-    currentB REAL,
-    currentC REAL,
-    powerA REAL,
-    powerB REAL,
-    powerC REAL,
-    powerfA REAL,
-    powerfB REAL,
-    powerfC REAL,
-    powerpA REAL,
-    powerpB REAL,
-    powerpC REAL,
-    currentpA REAL,
-    currentpB REAL,
-    currentpC REAL,
-    energy REAL,
-    energy_A REAL,
-    energy_B REAL,
-    total_energy REAL,
-    co2 REAL
-  );"
+      
     echo "Create DataBase Succesfully..."
   else
     echo "Already has Database..."
@@ -321,12 +316,13 @@ def httpRequests(payload):
 httpRequests(getTelemetry())
 #print(getTelemetry())
 EOR
-  cat << 'EOQ' > "$pydir/requests_cloud.py"
+  cat << 'EOQ' > "$pydir/telemetry_streaming_cloud.py"
 from sqlalchemy import create_engine, Column, Integer, Float, DateTime, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import requests
 import json
+import re
 
 engine = create_engine("sqlite:////home/orangepi/telemetry/sql/telemetry_factory.db")
 Session = sessionmaker(bind=engine)
@@ -334,116 +330,64 @@ session = Session()
 
 Base = declarative_base()
 
-def getGroup():
-    with open('/home/orangepi/telemetry/conf.json', 'r', encoding='utf-8') as file:
-        data = json.load(file)
-        code = data['code']
-        group = code[0]
-        return group, code
-
-token = "r8RQWM-MB2GpL5cO2sWZrHAfiAmt2i9SSgHdyZO5SevepE_qS1bQz-YZJemp4FHkmUXh59dX7Wzs7_KfSKw6dQ=="
+token = "--HLNwQC2ptqb9DXcNK5VzsvY0f0pbM1-Eem0SbmGeDLKTFJUPZR8z6SW0FqhS6TOLe6rVj3f3aKLOCwAtqQNA=="
 host = "147.50.230.159"
 port = "8088"
 org = "ack-org"
-bucket = "sql-loom_data"
-mearsurement = "productions"
-tuPle= getGroup()
-code = tuPle[1]
-group = tuPle[0]
+bucket = "telemetry_powers"
+mearsurement = "telemetry_powers"
+with open('/home/orangepi/telemetry/conf.json') as file:
+    code = json.load(file)['code']
+    group = re.findall(r'[A-Za-z]+',code)[0]
 tags = f"sector=Loom,groups={group},device={code}"
 url = "http://" + host + ":" + port + "/api/v2/write"
 
-class Telemetrycloud(Base):
-    __tablename__ = "telemetry_cloud"
+def getTelemetry():
+    class Telemetrycloud(Base):
+        __tablename__ = "telemetry_energy_cloud"
 
-    id = Column(Integer, primary_key=True)
-    create_at = Column(DateTime)
-    sent = Column(Integer)
-    ts = Column(Integer)
-    total_meter = Column(Float)
-    total_a = Column(Float)
-    total_b = Column(Float)
-    nta_meter = Column(Float)
-    ntb_meter = Column(Float)
-    ota_meter = Column(Float)
-    otb_meter = Column(Float)
-    total_work = Column(Integer)
-    work_a = Column(Integer)
-    work_b = Column(Integer)
-    hour_meter = Column(Float)
-    speed_main = Column(Float)
-    speed_take = Column(Float)
+        id = Column(Integer, primary_key=True)
+        create_at = Column(DateTime)
+        sent = Column(Integer)
+        ts = Column(Float)
+        voltA = Column(Float)
+        voltB = Column(Float)
+        voltC = Column(Float)
+        currentA = Column(Float)
+        currentB = Column(Float)
+        currentC = Column(Float)
+        powerA = Column(Float)
+        powerB = Column(Float)
+        powerC = Column(Float)
+        powerfA = Column(Float)
+        powerfB = Column(Float)
+        powerfC = Column(Float)
+        energy = Column(Float)
+        energy_A = Column(Float)
+        energy_B = Column(Float)
+        total_energy = Column(Float)
+        co2 = Column(Float)
 
-def jsonRead(key, path):
-    with open(path, 'r', encoding='utf-8') as file:
-        data = json.load(file)
-        return data[key]
+    data = session.query(Telemetrycloud)\
+            .filter(Telemetrycloud.sent == 0)\
+            .order_by(Telemetrycloud.create_at)\
+            .first()
+        
+    if data is None:
+        return None, None
 
-def onelineTelemetry(mearsurement, tags):
-    tb_cloud = session.query(Telemetrycloud)\
-        .filter(Telemetrycloud.sent == 0)\
-        .order_by(Telemetrycloud.create_at)\
-        .first()
-
-    if tb_cloud is None:
-        return None, None  # ไม่มีข้อมูลรอส่ง
-
-    fields = ",".join([
-        f"m_h={tb_cloud.hour_meter}",
-        f"total_meter={tb_cloud.total_meter}",
-        f"totalA={tb_cloud.total_a}",
-        f"totalB={tb_cloud.total_b}",
-        f"NTA={tb_cloud.nta_meter}",
-        f"NTB={tb_cloud.ntb_meter}",
-        f"OTA={tb_cloud.ota_meter}",
-        f"OTB={tb_cloud.otb_meter}",
-        f"main={tb_cloud.speed_main}",
-        f"take={tb_cloud.speed_take}"
+    return ",".join([
+        f"voltA={data.voltA}",f"voltB={data.voltB}",f"voltC={data.voltC}",
+        f"currentA={data.currentA}",f"currentB={data.currentB}",f"currentC={data.currentC}",
+        f"powerA={data.powerA}",f"powerB={data.powerB}",f"powerC={data.powerC}",
+        f"powerfA={data.powerfA}",f"powerfB={data.powerfB}",f"powerfC={data.powerfC}",
+        f"energy={data.energy}",f"energy_A={data.energy_A}",f"energy_B={data.energy_B}",
+        f"total_energy={data.total_energy}",
+        f"co2={data.co2}"
     ])
 
-    timestamp = tb_cloud.ts * 1_000_000
-    #print(f"{mearsurement},{tags} {fields} {timestamp}", tb_cloud.id)
-    return f"{mearsurement},{tags} {fields} {timestamp}", tb_cloud.id 
-
-
-def httpsRequests(mea, tag):
-    headers = {
-        "Authorization": f"Token {token}",
-        "Content-Type": "text/plain; charset=utf-8"
-    }
-    params = {
-        "org": org,
-        "bucket": bucket,
-        "precision": "ns"
-    }
-    try:
-        oneline, record_id = onelineTelemetry(mea, tag)
-
-        if oneline is None:
-            print("No pending records to send.")
-            return
-
-        response = requests.post(url, params=params, headers=headers, data=oneline, timeout=10)
-        print(f"response: {response.reason}")
-
-        if response.ok:
-            tb_cloud =(
-                    session.query(Telemetrycloud)
-                    .filter(Telemetrycloud.id == record_id)
-                    .first()
-                    )
-            tb_cloud.sent = 1
-            session.commit()
-            print(f"ID: {tb_cloud.id}")
-        else:
-            print(f"Code: {response.status_code}")
-
-    except requests.exceptions.Timeout:
-        print("!!!Timeout Err: (Timeout)")
-    except Exception as e:
-        print(f"!!! http function Error: {e}")
-
-httpsRequests(mearsurement, tags)
+#def httpRequests():
+print(getTelemetry())
 EOQ
   echo "Create Python Directory..."
 else
@@ -452,14 +396,11 @@ fi
 
 if [ ! -f "$conf" ]; then
   touch "$conf"
-  code=$(cat $HOME/loom/influxdb/device.txt)
-  source_=$(cat $HOME/loom/source.txt)
+  code=$(cat $HOME/powermeter/device_code.txt)
   cat << EOY > "$conf"
   {
     "code": "$code",
-    "source": "$source_",
-    "circumferance": 0,
-    "gear-ratio": 0
+    "source": 1
   }
 EOY
 fi 
