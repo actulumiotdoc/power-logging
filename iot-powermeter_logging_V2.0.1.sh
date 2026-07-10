@@ -294,7 +294,7 @@ def httpRequests(payload):
 httpRequests(getTelemetry())
 #print(getTelemetry())
 EOR
-  cat << 'EOQ' > "$pydir/telemetry_energy_cloud.py"
+  cat << 'EOQ' > "$pydir/telemetry_streaming_cloud.py"
 from sqlalchemy import create_engine, Column, Integer, Float, DateTime, Text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
