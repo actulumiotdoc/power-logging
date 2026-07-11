@@ -308,11 +308,11 @@ session = Session()
 
 Base = declarative_base()
 
-token = "--HLNwQC2ptqb9DXcNK5VzsvY0f0pbM1-Eem0SbmGeDLKTFJUPZR8z6SW0FqhS6TOLe6rVj3f3aKLOCwAtqQNA=="
+token = "qaxoBY-KSFAid_8Oy9evQgSiT8Yo3lgXJx6cNzVeD1qNJp0mzNw4SCviq4JQgxi1_VqegXFlca7vndziuhFilg=="
 host = "147.50.230.159"
 port = "8088"
 org = "ack-org"
-bucket = "telemetry_powers"
+bucket = "power"
 url = "http://" + host + ":" + port + "/api/v2/write"
 config_path = "/home/orangepi/telemetry/py/meta.json"
 base_path = "/home/orangepi/telemetry/sql/telemetry_factory.db"
