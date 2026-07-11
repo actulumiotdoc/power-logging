@@ -3,7 +3,7 @@ user=$HOME
 sqldir=telemetry/sql
 pydir=telemetry/py
 db=$user/telemetry/sql/telemetry_factory.db
-conf=$user/telemetry/conf.json
+# conf=$user/telemetry/conf.json
 flows=$user/.node-red/flows.json
 
 sudo apt update && sudo apt -y upgrade
@@ -46,10 +46,11 @@ if [ ! -d "$sqldir" ]; then
       total_e REAL,
       energy_A REAL,
       energy_B REAL,
-      co2 REAL);"
+      co2 REAL
+      );"
 
   sqlite3 "$db" "
-      CREATE TABLE IF NOT EXISTS "telemetry_energy"(
+      CREATE TABLE telemetry_energy(
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       create_at DATETIME DEFAULT (datetime('now', '+7 hours')),
       e0 REAL, 
@@ -421,19 +422,19 @@ else
   echo "Already has Python Directory..."
 fi
 
-if [ ! -f "$conf" ]; then
-  touch "$conf"
-  code=$(cat $HOME/powermeter/device_code.txt)
-  cat << EOY > "$conf"
-  {
-    "type": "-",
-    "sector": "MDB1",
-    "code": "$code",
-    "source": 1,
-    "current_ratio": 1
-  }
-EOY
-fi 
+# if [ ! -f "$conf" ]; then
+#   touch "$conf"
+#   code=$(cat $HOME/powermeter/device_code.txt)
+#   cat << EOY > "$conf"
+#   {
+#     "type": "-",
+#     "sector": "MDB1",
+#     "code": "$code",
+#     "source": 1,
+#     "current_ratio": 1
+#   }
+# EOY
+# fi 
 
 #node-red-flow
 rm -rf "$flows"
