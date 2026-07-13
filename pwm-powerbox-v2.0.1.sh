@@ -267,7 +267,9 @@ def getTelemetry():
     return jsonData
 
 def httpRequests(payload):
-    source = 1
+    with open('/home/orangepi/telemetry/conf.json', 'r', encoding='utf-8') as file:
+      data = json.load(file)
+      source = data['source']
     url = f"http://192.168.0.9:1880/api/pw-meter/device-opi-source{source}/data-log"
     data = payload
     try:
